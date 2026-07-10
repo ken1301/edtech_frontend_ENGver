@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '@/lib/apiClient';
@@ -15,6 +15,9 @@ import {
 } from 'lucide-react';
 
 export default function StudentClassesPage() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'none' | 'name'>('none');
+
   const { data: classesData, isLoading } = useQuery({
     queryKey: ['student', 'classes'],
     queryFn: async () => {
@@ -24,6 +27,15 @@ export default function StudentClassesPage() {
   });
 
   const classes = Array.isArray(classesData) ? classesData : classesData?.classes || [];
+
+  let filteredClasses = classes.filter((cls: any) => 
+    cls.class_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    cls.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (sortBy === 'name') {
+    filteredClasses = [...filteredClasses].sort((a, b) => a.class_name.localeCompare(b.class_name));
+  }
 
   return (
     <div className="p-8">
@@ -43,12 +55,21 @@ export default function StudentClassesPage() {
           <input
             type="text"
             placeholder="Search classes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)] rounded-2xl py-3 pl-12 pr-4 text-[var(--color-text)] focus:outline-none focus:ring-2 focus:ring-brand/20 focus:border-brand transition-all shadow-sm"
           />
         </div>
-        <button className="flex items-center gap-2 px-6 py-3 bg-[var(--color-surface)] border border-[var(--color-outline-variant)] rounded-2xl text-[var(--color-muted)] hover:bg-[var(--color-surface-container-high)] transition-colors font-medium shadow-sm">
+        <button 
+          onClick={() => setSortBy(prev => prev === 'none' ? 'name' : 'none')}
+          className={`flex items-center gap-2 px-6 py-3 border rounded-2xl transition-all font-medium shadow-sm ${
+            sortBy === 'name' 
+              ? 'bg-brand/10 border-brand/40 text-brand hover:bg-brand/15' 
+              : 'bg-[var(--color-surface)] border-[var(--color-outline-variant)] text-[var(--color-muted)] hover:bg-[var(--color-surface-container-high)]'
+          }`}
+        >
           <LucideFilter size={18} />
-          Filter results
+          {sortBy === 'name' ? 'Filtered: Name A-Z' : 'Filter results'}
         </button>
       </div>
 
@@ -64,9 +85,15 @@ export default function StudentClassesPage() {
           <h3 className="text-xl font-bold text-[var(--color-text)] mb-2">You have not joined any classes yet</h3>
           <p className="text-[var(--color-muted)]">Ask your teacher for a class code to get started.</p>
         </div>
+      ) : filteredClasses.length === 0 ? (
+        <div className="text-center py-20 bg-[var(--color-surface)] border border-[var(--color-outline-variant)] rounded-[32px] shadow-sm">
+          <LucideSearch className="w-16 h-16 text-[var(--color-muted)] mx-auto mb-4" />
+          <h3 className="text-xl font-bold text-[var(--color-text)] mb-2">No classes found</h3>
+          <p className="text-[var(--color-muted)]">No classes match the search query "{searchQuery}"</p>
+        </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {classes.map((cls: any, index: number) => {
+          {filteredClasses.map((cls: any, index: number) => {
             const colors = [
               { bg: 'bg-brand', lightBg: 'bg-brand/10', text: 'text-brand', border: 'border-brand/30' },
               { bg: 'bg-accent', lightBg: 'bg-accent/10', text: 'text-accent', border: 'border-accent/30' },
@@ -83,7 +110,7 @@ export default function StudentClassesPage() {
                       {cls.class_name.substring(0, 1)}
                     </div>
                     <span className={`px-3 py-1 bg-[var(--color-surface)] rounded-full text-xs font-bold ${theme.text} shadow-sm border ${theme.border}`}>
-                      Active
+                      {cls.status || 'Active'}
                     </span>
                   </div>
                   <h3 className={`mt-4 text-xl font-bold ${theme.text} tracking-tight`}>{cls.class_name}</h3>
@@ -96,10 +123,10 @@ export default function StudentClassesPage() {
                     </p>
                     <div className="flex items-center gap-4 text-sm font-medium text-[var(--color-muted)]">
                       <div className="flex items-center gap-1.5 bg-[var(--color-surface-container-high)] px-3 py-1.5 rounded-lg">
-                        <LucideClock className="w-4 h-4 text-[var(--color-muted)]" /> 12 lessons
+                        <LucideClock className="w-4 h-4 text-[var(--color-muted)]" /> {cls.lesson_count || 12} lessons
                       </div>
                       <div className="flex items-center gap-1.5 bg-[var(--color-surface-container-high)] px-3 py-1.5 rounded-lg">
-                        <LucideTrophy className="w-4 h-4 text-yellow-500" /> Rank 3
+                        <LucideTrophy className="w-4 h-4 text-yellow-500" /> {cls.rank ? `Rank ${cls.rank}` : 'Rank 3'}
                       </div>
                     </div>
                   </div>

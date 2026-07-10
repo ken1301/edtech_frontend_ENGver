@@ -39,6 +39,7 @@ interface CopilotReportData {
   } | null;
   reportedAt?: string;
   acknowledgedAt?: string;
+  classNames?: string;
 }
 
 // ─── Skeleton ────────────────────────────────────────────────────────────────
@@ -235,8 +236,26 @@ export default function CopilotReportPage() {
                 <Brain size={24} weight="duotone" className="text-[var(--color-primary)]" />
               </div>
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)] mb-0.5">Copilot AI</p>
-                <h1 className="text-xl font-bold text-[var(--color-text)] leading-tight">{data.title || lessonId}</h1>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)] mb-1">Copilot AI Report</p>
+                <h1 className="text-2xl font-black text-[var(--color-text)] leading-tight tracking-tight mb-2">
+                  {data.title || lessonId}
+                </h1>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--color-muted)]">
+                  {data.classNames && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
+                      <span className="font-medium text-[var(--color-on-surface-variant)]">Class:</span>
+                      <span className="font-semibold text-[var(--color-text)] bg-[var(--color-surface-container-high)] px-2 py-0.5 rounded-md">
+                        {data.classNames}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                    <span className="font-medium">Lesson:</span>
+                    <span className="font-semibold text-[var(--color-text)]">{data.title || lessonId}</span>
+                  </div>
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-3">

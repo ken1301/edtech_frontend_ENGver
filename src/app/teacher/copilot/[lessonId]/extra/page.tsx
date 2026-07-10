@@ -312,6 +312,8 @@ export default function CopilotExtraExercisesPage() {
   const lessonId = params.lessonId as string;
   const [drafts, setDrafts] = React.useState<ExtraDraft[]>([]);
   const [published, setPublished] = React.useState(false);
+  const [lessonTitle, setLessonTitle] = React.useState('');
+  const [classNames, setClassNames] = React.useState('');
 
   const generateMutation = useMutation({
     mutationFn: async () => {
@@ -321,8 +323,12 @@ export default function CopilotExtraExercisesPage() {
     onSuccess: (data) => {
       if (data.created && data.drafts) {
         setDrafts(data.drafts);
+        setLessonTitle(data.lessonTitle || '');
+        setClassNames(data.classNames || '');
       } else {
         setDrafts([]);
+        setLessonTitle(data.lessonTitle || '');
+        setClassNames(data.classNames || '');
       }
     },
   });
@@ -365,13 +371,31 @@ export default function CopilotExtraExercisesPage() {
           <Link href={`/teacher/copilot/${lessonId}`} className="inline-flex items-center gap-1.5 text-sm text-[var(--color-primary)] hover:underline mb-3">
             <ArrowLeft size={14} />Back to report
           </Link>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center mt-1">
               <Sparkle size={20} weight="duotone" className="text-[var(--color-primary)]" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[var(--color-text)] tracking-tight">Grouped extra exercises</h1>
-              <p className="text-xs text-[var(--color-muted)] mt-0.5">AI automatically groups students and creates suitable exercises</p>
+              <h1 className="text-2xl font-black text-[var(--color-text)] tracking-tight">Grouped extra exercises</h1>
+              <p className="text-xs text-[var(--color-muted)] mt-1">AI automatically groups students and creates suitable exercises</p>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--color-muted)] mt-2">
+                {classNames && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
+                    <span className="font-medium text-[var(--color-on-surface-variant)]">Class:</span>
+                    <span className="font-semibold text-[var(--color-text)] bg-[var(--color-surface-container-high)] px-2 py-0.5 rounded-md">
+                      {classNames}
+                    </span>
+                  </div>
+                )}
+                {lessonTitle && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                    <span className="font-medium">Lesson:</span>
+                    <span className="font-semibold text-[var(--color-text)]">{lessonTitle}</span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
