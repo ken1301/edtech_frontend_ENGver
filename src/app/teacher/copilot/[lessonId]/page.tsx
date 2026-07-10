@@ -229,23 +229,26 @@ export default function CopilotReportPage() {
         </Link>
 
         {/* ── Hero Header ── */}
-        <div className="rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] overflow-hidden mb-6">
-          <div className="bg-gradient-to-r from-[var(--color-primary)]/8 via-transparent to-transparent p-7 flex flex-wrap items-start justify-between gap-4">
+        <div className="mb-6 overflow-hidden rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
+          <div className="bg-gradient-to-r from-[var(--color-primary)]/10 via-transparent to-transparent p-7 flex flex-wrap items-start justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-[var(--color-primary)]/10 flex items-center justify-center">
-                <Brain size={24} weight="duotone" className="text-[var(--color-primary)]" />
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[var(--color-primary)]/12 ring-1 ring-[var(--color-primary)]/15">
+                <Brain size={26} weight="duotone" className="text-[var(--color-primary)]" />
               </div>
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--color-primary)] mb-1">Copilot AI Report</p>
                 <h1 className="text-2xl font-black text-[var(--color-text)] leading-tight tracking-tight mb-2">
                   {data.title || lessonId}
                 </h1>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-[var(--color-muted)]">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-muted)]">
+                  <span className="rounded-full border border-[var(--color-primary)]/15 bg-[var(--color-primary)]/8 px-3 py-1 font-semibold text-[var(--color-primary)]">
+                    Lesson ID: {lessonId.slice(0, 8)}
+                  </span>
                   {data.classNames && (
                     <div className="flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-primary)]" />
                       <span className="font-medium text-[var(--color-on-surface-variant)]">Class:</span>
-                      <span className="font-semibold text-[var(--color-text)] bg-[var(--color-surface-container-high)] px-2 py-0.5 rounded-md">
+                      <span className="font-semibold text-[var(--color-text)] bg-[var(--color-surface-container-high)] px-3 py-1 rounded-full border border-slate-600/40">
                         {data.classNames}
                       </span>
                     </div>
@@ -279,6 +282,20 @@ export default function CopilotReportPage() {
                 {status === 'FAILED' && 'Failed'}
               </div>
             </div>
+            <div className="grid w-full gap-3 md:grid-cols-3">
+              <div className="rounded-2xl border border-white/6 bg-slate-950/20 px-4 py-3">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-muted)]">Lesson</p>
+                <p className="text-sm font-semibold text-[var(--color-text)]">{data.title || lessonId}</p>
+              </div>
+              <div className="rounded-2xl border border-white/6 bg-slate-950/20 px-4 py-3">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-muted)]">Class</p>
+                <p className="text-sm font-semibold text-[var(--color-text)]">{data.classNames || 'No class information yet'}</p>
+              </div>
+              <div className="rounded-2xl border border-white/6 bg-slate-950/20 px-4 py-3">
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-muted)]">Reported at</p>
+                <p className="text-sm font-semibold text-[var(--color-text)]">{reportedAt || 'Updating'}</p>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -297,8 +314,8 @@ export default function CopilotReportPage() {
             <motion.div variants={stagger} initial="hidden" animate="visible" className="space-y-5">
 
               {/* ── Stats bar ── */}
-              <motion.div variants={fadeUp} className="grid grid-cols-3 gap-4">
-                <div className="rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-5 text-center">
+              <motion.div variants={fadeUp} className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <div className="rounded-2xl border border-slate-700/70 bg-slate-900/60 p-5 text-center shadow-[0_12px_32px_rgba(15,23,42,0.18)]">
                   <div className="flex items-center justify-center gap-2 mb-2">
                     <Users size={16} weight="duotone" className="text-[var(--color-muted)]" />
                     <span className="text-xs font-bold uppercase tracking-widest text-[var(--color-muted)]">Class total</span>
@@ -306,39 +323,39 @@ export default function CopilotReportPage() {
                   <p className="text-4xl font-bold text-[var(--color-text)]">{totalStudents || '—'}</p>
                   <p className="text-xs text-[var(--color-muted)] mt-1">students</p>
                 </div>
-                <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50/50 p-5 text-center">
+                <div className="rounded-2xl border border-emerald-400/25 bg-gradient-to-br from-emerald-500/18 via-emerald-500/10 to-slate-900/10 p-5 text-center shadow-[0_12px_32px_rgba(16,185,129,0.12)]">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <CheckCircle size={16} weight="fill" className="text-emerald-500" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-600">Strong progress</span>
+                    <CheckCircle size={16} weight="fill" className="text-emerald-300" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-emerald-100">Strong progress</span>
                   </div>
-                  <p className="text-4xl font-bold text-emerald-600">{totalStudents > 0 ? goodStudents : '—'}</p>
-                  <p className="text-xs text-emerald-500 mt-1">students</p>
+                  <p className="text-4xl font-bold text-white">{totalStudents > 0 ? goodStudents : '—'}</p>
+                  <p className="text-xs text-emerald-100/80 mt-1">students</p>
                 </div>
-                <div className="rounded-2xl border border-amber-200/60 bg-amber-50/50 p-5 text-center">
+                <div className="rounded-2xl border border-amber-400/25 bg-gradient-to-br from-amber-500/18 via-orange-500/10 to-slate-900/10 p-5 text-center shadow-[0_12px_32px_rgba(245,158,11,0.12)]">
                   <div className="flex items-center justify-center gap-2 mb-2">
-                    <Warning size={16} weight="fill" className="text-amber-500" />
-                    <span className="text-xs font-bold uppercase tracking-widest text-amber-600">Need support</span>
+                    <Warning size={16} weight="fill" className="text-amber-300" />
+                    <span className="text-xs font-bold uppercase tracking-widest text-amber-100">Need support</span>
                   </div>
-                  <p className="text-4xl font-bold text-amber-600">{attentionItems.length}</p>
-                  <p className="text-xs text-amber-500 mt-1">students</p>
+                  <p className="text-4xl font-bold text-white">{attentionItems.length}</p>
+                  <p className="text-xs text-amber-100/80 mt-1">students</p>
                 </div>
               </motion.div>
 
               {/* ── AI Summary ── */}
-              <motion.div variants={fadeUp} className="rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-8">
+              <motion.div variants={fadeUp} className="rounded-3xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-8 shadow-[0_20px_60px_rgba(15,23,42,0.14)]">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-9 h-9 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center">
                     <ChartBar size={18} weight="duotone" className="text-[var(--color-primary)]" />
                   </div>
                   <h2 className="text-base font-bold text-[var(--color-text)]">AI analysis</h2>
                 </div>
-                <p className="text-[var(--color-muted)] leading-relaxed whitespace-pre-wrap">
+                <p className="text-base leading-8 whitespace-pre-wrap text-[var(--color-text)]/88">
                   {report.summary || 'No summary available.'}
                 </p>
                 {report.reasoning && (
                   <div className="mt-5 rounded-2xl bg-[var(--color-surface-container-high)] border border-[var(--color-outline-variant)] p-5">
                     <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--color-muted)] mb-2">Detailed reasoning</p>
-                    <p className="text-sm text-[var(--color-text)] leading-relaxed">{report.reasoning}</p>
+                    <p className="text-sm leading-7 text-[var(--color-text)]/88">{report.reasoning}</p>
                   </div>
                 )}
               </motion.div>

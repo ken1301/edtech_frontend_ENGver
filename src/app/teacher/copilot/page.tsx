@@ -14,6 +14,7 @@ interface CopilotReportItem {
   title: string;
   subject?: string;
   topic?: string;
+  classNames?: string;
   status: 'PENDING' | 'ANALYSING' | 'REPORT_READY' | 'FAILED';
   reportedAt?: string;
   acknowledgedAt?: string;
@@ -74,6 +75,13 @@ function ReportCard({ item, index }: { item: CopilotReportItem; index: number })
               <span className="w-2 h-2 rounded-full bg-[var(--color-primary)] flex-shrink-0" />
             )}
           </div>
+          {item.classNames && (
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/8 px-2.5 py-1 font-semibold text-[var(--color-primary)]">
+                Class: {item.classNames}
+              </span>
+            </div>
+          )}
           <div className="flex items-center gap-3 flex-wrap">
             <StatusBadge status={item.status} />
             {(item.subject || item.topic) && (
