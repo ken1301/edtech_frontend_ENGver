@@ -17,6 +17,10 @@ import {
   LucidePlus,
   LucideSearch,
   LucideTrash2,
+  LucideSparkles,
+  LucideAlertTriangle,
+  LucideFileText,
+  LucideCheck,
 } from 'lucide-react';
 import RadarChart from '@/components/RadarChart';
 import apiClient from '@/lib/apiClient';
@@ -632,6 +636,34 @@ export default function TeacherDashboard() {
     router.push(`/teacher/copilot/${lessonId}`);
   };
 
+  const clearAllNotifications = () => {
+    try {
+      window.localStorage.removeItem(NOTIFICATION_STORAGE_KEY);
+      setNotifications([]);
+    } catch (e) {
+      console.warn('Failed to clear notifications:', e);
+    }
+  };
+
+  const formatTimeAgo = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      const now = new Date();
+      const diffMs = now.getTime() - date.getTime();
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMins / 60);
+      const diffDays = Math.floor(diffHours / 24);
+
+      if (diffMins < 1) return 'Just now';
+      if (diffMins < 60) return `${diffMins}m ago`;
+      if (diffHours < 24) return `${diffHours}h ago`;
+      if (diffDays === 1) return 'Yesterday';
+      return date.toLocaleDateString('en-US', { day: '2-digit', month: '2-digit' });
+    } catch {
+      return '';
+    }
+  };
+
   return (
     <div className="app-shell-accent flex h-screen flex-col bg-bg">
       <nav className="elevated-panel sticky top-0 z-50 flex h-16 w-full shrink-0 items-center justify-between px-6">
@@ -663,36 +695,125 @@ export default function TeacherDashboard() {
               {notifications.length > 0 && <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_0_4px_rgba(244,63,94,0.18)]" />}
             </button>
             {showNotifications && (
-              <div className="fixed right-6 top-16 z-[2147483647] w-80 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] shadow-2xl">
-                <div className="border-b border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-4">
-                  <h3 className="font-bold text-[var(--color-text)]">Notifications</h3>
+              <div className="fixed right-6 top-16 z-[2147483647] w-96 max-w-[calc(100vw-1.5rem)] overflow-hidden rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] shadow-2xl">
+                <style dangerouslySetInnerHTML={{__html: `
+                  @keyframes notification-pop {
+                    0% { transform: translateY(-8px) scale(0.98); opacity: 0; }
+                    60% { transform: translateY(0) scale(1.01); opacity: 1; }
+                    100% { transform: translateY(0) scale(1); opacity: 1; }
+                  }
+                  .notification-pop {
+                    animation: notification-pop 0.28s cubic-bezier(0.16, 1, 0.3, 1) both;
+                  }
+                `}} />
+
+                {/* Header */}
+                <div className="flex items-center justify-between border-b border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-4">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-bold text-sm text-[var(--color-text)]">Notifications</h3>
+                    {notifications.length > 0 && (
+                      <span className="bg-rose-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                        {notifications.length}
+                      </span>
+                    )}
+                  </div>
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={clearAllNotifications}
+                      className="flex items-center gap-1 text-xs font-semibold text-[var(--color-muted)] hover:text-rose-500 transition-colors"
+                    >
+                      <LucideTrash2 className="w-3.5 h-3.5" /> Clear all
+                    </button>
+                  )}
                 </div>
+
+                {/* List */}
                 {notifications.length === 0 ? (
-                  <div className="p-6 text-center text-sm text-[var(--color-muted)]">No new notifications</div>
+                  <div className="flex flex-col items-center gap-2 p-8 text-center text-sm text-[var(--color-muted)]">
+                    <LucideBell className="w-8 h-8 text-[var(--color-outline-variant)]" />
+                    No new notifications
+                  </div>
                 ) : (
-                  <div className="max-h-[calc(100vh-5rem)] divide-y divide-[var(--color-outline-variant)] overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <button
-                        key={notification.id}
-                        onClick={() => openReport(notification.lessonId)}
-                        className="w-full p-4 text-left transition-colors hover:bg-[var(--color-surface-container-high)]"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <p className="line-clamp-2 text-sm font-semibold text-[var(--color-text)]">{notification.title}</p>
-                            <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-[var(--color-muted)]">{notification.message}</p>
+                  <div className="max-h-[calc(100vh-12rem)] divide-y divide-[var(--color-outline-variant)] overflow-y-auto">
+                    {notifications.map((notification) => {
+                      const getNotificationMeta = (type: string) => {
+                        switch (type) {
+                          case 'COPILOT_REPORT_READY':
+                            return {
+                              icon: <LucideSparkles className="w-4 h-4 text-sky-500" />,
+                              bg: 'bg-sky-50 dark:bg-sky-950/30 border border-sky-100 dark:border-sky-900/50',
+                              badgeText: 'Copilot Ready',
+                            };
+                          case 'COPILOT_REPORT_FAILED':
+                            return {
+                              icon: <LucideAlertTriangle className="w-4 h-4 text-rose-500" />,
+                              bg: 'bg-rose-50 dark:bg-rose-950/30 border border-rose-100 dark:border-rose-900/50',
+                              badgeText: 'Failed',
+                            };
+                          case 'ASSIGNMENT_PUBLISHED':
+                            return {
+                              icon: <LucideFileText className="w-4 h-4 text-indigo-500" />,
+                              bg: 'bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50',
+                              badgeText: 'Assigned',
+                            };
+                          case 'ASSIGNMENT_SUBMITTED':
+                            return {
+                              icon: <LucideFileText className="w-4 h-4 text-emerald-500" />,
+                              bg: 'bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900/50',
+                              badgeText: 'Submitted',
+                            };
+                          case 'ASSIGNMENT_GRADED':
+                            return {
+                              icon: <LucideCheck className="w-4 h-4 text-amber-500" />,
+                              bg: 'bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50',
+                              badgeText: 'Graded',
+                            };
+                          default:
+                            return {
+                              icon: <LucideBell className="w-4 h-4 text-[var(--color-primary)]" />,
+                              bg: 'bg-brand/10 border border-brand/25',
+                              badgeText: type.replace(/_/g, ' '),
+                            };
+                        }
+                      };
+
+                      const meta = getNotificationMeta(notification.type);
+
+                      return (
+                        <button
+                          key={notification.id}
+                          onClick={() => openReport(notification.lessonId)}
+                          className="notification-pop flex w-full items-start gap-3.5 border-l-2 border-transparent p-4 text-left hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-container-high)] transition-all duration-300"
+                          style={{ animationDelay: `${Math.min(6, notifications.findIndex((item) => item.id === notification.id)) * 60}ms` }}
+                        >
+                          <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full ${meta.bg}`}>
+                            {meta.icon}
                           </div>
-                          <div className="flex shrink-0 flex-col items-end gap-2">
-                            <span className="rounded-full bg-brand/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-[var(--color-primary)]">
-                              {notification.type.replace(/_/g, ' ')}
-                            </span>
-                            {notification.lessonId && <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--color-muted)]">View report</span>}
+                          <div className="min-w-0 flex-1 space-y-1">
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-muted)]">
+                                {meta.badgeText}
+                              </span>
+                              <span className="text-[10px] font-medium text-[var(--color-muted)]">
+                                {formatTimeAgo(notification.createdAt)}
+                              </span>
+                            </div>
+                            <p className="line-clamp-1 text-sm font-semibold leading-snug text-[var(--color-text)]">{notification.title}</p>
+                            <p className="line-clamp-2 text-xs leading-relaxed text-[var(--color-muted)]">{notification.message}</p>
+                            {notification.lessonId && (
+                              <div className="pt-1 flex items-center gap-0.5 text-xs font-bold text-[var(--color-primary)] hover:opacity-90">
+                                <span>View report</span>
+                                <LucideChevronRight className="w-3.5 h-3.5" />
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </button>
-                    ))}
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
+
+                {/* Footer */}
                 <div className="border-t border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-3">
                   <Link href="/teacher/copilot" className="block w-full text-center text-xs font-semibold text-[var(--color-primary)] hover:underline">
                     View all reports
