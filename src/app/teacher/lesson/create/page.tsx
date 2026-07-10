@@ -218,6 +218,7 @@ function CreateLessonWizard() {
   ];
 
   const searchParams = useSearchParams();
+  const assignedClassId = searchParams.get('classId');
 
   // Global State for Lesson
   const [formData, setFormData] = useState(() => {
@@ -244,7 +245,9 @@ function CreateLessonWizard() {
   const [lesson1Summary, setLesson1Summary] = useState<Lesson1Summary | null>(null);
   const [lesson2Summary, setLesson2Summary] = useState<string>('');
   const [deadline, setDeadline] = useState<string>('');
-  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>(
+    assignedClassId ? [assignedClassId] : [],
+  );
   const [generatedExerciseId, setGeneratedExerciseId] = useState<string>('');
   const [activeGenerationStep, setActiveGenerationStep] = useState<'lesson1' | 'lesson2' | null>(null);
   const [activeRecoveryMessage, setActiveRecoveryMessage] = useState<string>('');
@@ -258,6 +261,15 @@ function CreateLessonWizard() {
     }
   });
   const classes: TeacherClassRecord[] = Array.isArray(classesData) ? classesData : [];
+  const lockedAssignedClass = assignedClassId
+    ? classes.find((cls) => cls.class_id === assignedClassId) || null
+    : null;
+
+  useEffect(() => {
+    if (assignedClassId) {
+      setSelectedClassIds([assignedClassId]);
+    }
+  }, [assignedClassId]);
 
   const isExtracting = activeGenerationStep !== null;
 
@@ -587,36 +599,59 @@ function CreateLessonWizard() {
               {selectedClassIds.length} classes selected
             </span>
           </div>
-          <p className="mb-4 text-sm text-[var(--color-muted)]">The selected classes will be used to fetch `previous_lessons` for Lesson 1 and will remain attached through publishing.</p>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            {classes.map((cls) => {
-              const isSelected = selectedClassIds.includes(cls.class_id);
-              return (
-                <button
-                  key={cls.class_id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedClassIds((current) =>
-                      current.includes(cls.class_id)
-                        ? current.filter((value) => value !== cls.class_id)
-                        : [...current, cls.class_id],
-                    );
-                  }}
-                  className={`rounded-2xl border p-4 text-left transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-brand/10 shadow-sm' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-container-high)]'}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-[var(--color-text)]">{cls.class_name}</div>
-                      <div className="mt-1 text-xs text-[var(--color-muted)]">{cls.class_code || cls.class_id}</div>
-                    </div>
-                    <div className={`mt-1 h-5 w-5 rounded border ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary)]' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)]'}`}>
-                      {isSelected && <LucideCheckCircle2 className="h-5 w-5 text-white" />}
-                    </div>
+          {assignedClassId ? (
+            <div className="rounded-2xl border border-[var(--color-primary)]/25 bg-brand/10 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="font-semibold text-[var(--color-text)]">
+                    {lockedAssignedClass?.class_name || 'Selected class'}
                   </div>
-                </button>
-              );
-            })}
-          </div>
+                  <div className="mt-1 text-xs text-[var(--color-muted)]">
+                    {lockedAssignedClass?.class_code || assignedClassId}
+                  </div>
+                  <p className="mt-2 text-sm text-[var(--color-muted)]">
+                    This lesson will be assigned to the class you opened from the learning path.
+                  </p>
+                </div>
+                <div className="mt-1 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                  Locked
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="mb-4 text-sm text-[var(--color-muted)]">The selected classes will be used to fetch `previous_lessons` for Lesson 1 and will remain attached through publishing.</p>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                {classes.map((cls) => {
+                  const isSelected = selectedClassIds.includes(cls.class_id);
+                  return (
+                    <button
+                      key={cls.class_id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedClassIds((current) =>
+                          current.includes(cls.class_id)
+                            ? current.filter((value) => value !== cls.class_id)
+                            : [...current, cls.class_id],
+                        );
+                      }}
+                      className={`rounded-2xl border p-4 text-left transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-brand/10 shadow-sm' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-container-high)]'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="font-semibold text-[var(--color-text)]">{cls.class_name}</div>
+                          <div className="mt-1 text-xs text-[var(--color-muted)]">{cls.class_code || cls.class_id}</div>
+                        </div>
+                        <div className={`mt-1 h-5 w-5 rounded border ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary)]' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)]'}`}>
+                          {isSelected && <LucideCheckCircle2 className="h-5 w-5 text-white" />}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -754,39 +789,62 @@ function CreateLessonWizard() {
             {selectedClassIds.length} classes selected
           </span>
         </div>
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-          {classes.map((cls) => {
-            const isSelected = selectedClassIds.includes(cls.class_id);
-            return (
-              <button
-                key={cls.class_id}
-                type="button"
-                onClick={() => {
-                  setSelectedClassIds((current) =>
-                    current.includes(cls.class_id)
-                      ? current.filter((value) => value !== cls.class_id)
-                      : [...current, cls.class_id],
-                  );
-                }}
-                className={`rounded-2xl border p-4 text-left transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-brand/10 shadow-sm' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-container-high)]'}`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-[var(--color-text)]">{cls.class_name}</div>
-                    <div className="mt-1 text-xs text-[var(--color-muted)]">{cls.class_code || cls.class_id}</div>
-                  </div>
-                  <div className={`mt-1 h-5 w-5 rounded border ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary)]' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)]'}`}>
-                    {isSelected && <LucideCheckCircle2 className="h-5 w-5 text-white" />}
-                  </div>
+        {assignedClassId ? (
+          <div className="rounded-2xl border border-[var(--color-primary)]/25 bg-brand/10 p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-semibold text-[var(--color-text)]">
+                  {lockedAssignedClass?.class_name || 'Selected class'}
                 </div>
-              </button>
-            );
-          })}
-        </div>
-        {classes.length === 0 && (
-          <div className="rounded-xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] px-4 py-3 text-sm text-[var(--color-muted)]">
-            There are no classes available to publish this lesson to.
+                <div className="mt-1 text-xs text-[var(--color-muted)]">
+                  {lockedAssignedClass?.class_code || assignedClassId}
+                </div>
+                <p className="mt-2 text-sm text-[var(--color-muted)]">
+                  Publishing is locked to this class because the lesson was created from its learning path.
+                </p>
+              </div>
+              <div className="mt-1 rounded-full bg-[var(--color-primary)] px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+                Locked
+              </div>
+            </div>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {classes.map((cls) => {
+                const isSelected = selectedClassIds.includes(cls.class_id);
+                return (
+                  <button
+                    key={cls.class_id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedClassIds((current) =>
+                        current.includes(cls.class_id)
+                          ? current.filter((value) => value !== cls.class_id)
+                          : [...current, cls.class_id],
+                      );
+                    }}
+                    className={`rounded-2xl border p-4 text-left transition-colors ${isSelected ? 'border-[var(--color-primary)] bg-brand/10 shadow-sm' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-container-high)]'}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-[var(--color-text)]">{cls.class_name}</div>
+                        <div className="mt-1 text-xs text-[var(--color-muted)]">{cls.class_code || cls.class_id}</div>
+                      </div>
+                      <div className={`mt-1 h-5 w-5 rounded border ${isSelected ? 'border-[var(--color-primary)] bg-[var(--color-primary)]' : 'border-[var(--color-outline-variant)] bg-[var(--color-surface)]'}`}>
+                        {isSelected && <LucideCheckCircle2 className="h-5 w-5 text-white" />}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            {classes.length === 0 && (
+              <div className="rounded-xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] px-4 py-3 text-sm text-[var(--color-muted)]">
+                There are no classes available to publish this lesson to.
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

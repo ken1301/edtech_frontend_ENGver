@@ -12,6 +12,7 @@ interface Toast {
   message: string;
   type: string;
   lessonId?: string;
+  path?: string;
 }
 
 interface TokenResponse {
@@ -23,6 +24,7 @@ interface NotificationPayload {
   message?: string;
   type?: string;
   lessonId?: string;
+  path?: string;
 }
 
 interface StoredNotification extends Toast {
@@ -72,9 +74,13 @@ function persistNotification(notification: StoredNotification) {
 
 export default function NotificationListener() {
   const pathname = usePathname();
-  const openReport = (lessonId?: string) => {
-    if (!lessonId) return;
-    window.location.href = `/teacher/copilot/${lessonId}`;
+  const openNotificationTarget = (payload: { lessonId?: string; path?: string }) => {
+    if (payload.path) {
+      window.location.href = payload.path;
+      return;
+    }
+    if (!payload.lessonId) return;
+    window.location.href = `/teacher/copilot/${payload.lessonId}`;
   };
   const [toasts, setToasts] = useState<Toast[]>([]);
   const socketRef = useRef<Socket | null>(null);
@@ -150,6 +156,7 @@ export default function NotificationListener() {
               message: payload.message || '',
               type: payload.type || 'DEFAULT',
               lessonId: payload.lessonId,
+              path: payload.path,
             };
             const storedNotification: StoredNotification = {
               ...newToast,
@@ -258,8 +265,8 @@ export default function NotificationListener() {
           <div
             key={toast.id}
             onClick={() => {
-              if (toast.lessonId) {
-                openReport(toast.lessonId);
+              if (toast.path || toast.lessonId) {
+                openNotificationTarget(toast);
                 return;
               }
               setToasts((prev) => prev.filter((t) => t.id !== toast.id));

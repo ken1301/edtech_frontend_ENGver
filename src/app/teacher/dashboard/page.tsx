@@ -36,6 +36,7 @@ type DashboardNotificationItem = {
   type: string;
   createdAt: string;
   lessonId?: string;
+  path?: string;
 };
 
 type TeacherRoadmapItem = {
@@ -146,11 +147,23 @@ const RoadmapView = ({ classId }: { classId: string | null }) => {
   });
 
   if (isLoading) return <Skeleton className="h-32 w-full rounded-2xl" />;
-  if (!data || data.length === 0) return <div className="py-8 text-center text-[var(--color-muted)]">No lessons have been assigned to this class yet.</div>;
 
   return (
     <div className="space-y-4">
-      {data.map((item, idx) => (
+      {classId && (
+        <div className="flex justify-end">
+          <Link
+            href={`/teacher/lesson/create?classId=${classId}`}
+            className="inline-flex items-center gap-2 rounded-xl bg-[var(--color-primary)] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+          >
+            <LucidePlus className="h-4 w-4" />
+            Create lesson for this class
+          </Link>
+        </div>
+      )}
+      {!data || data.length === 0 ? (
+        <div className="py-8 text-center text-[var(--color-muted)]">No lessons have been assigned to this class yet.</div>
+      ) : data.map((item, idx) => (
         <div key={item.id} className="flex items-center justify-between gap-4 rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-5">
           <div className="flex items-center gap-4">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand/10 font-bold text-[var(--color-primary)]">
@@ -630,10 +643,15 @@ export default function TeacherDashboard() {
     addStudentsMutation.mutate({ classId: selectedClassId, usernames });
   };
 
-  const openReport = (lessonId?: string) => {
-    if (!lessonId) return;
+  const openNotificationTarget = (notification: DashboardNotificationItem) => {
     setShowNotifications(false);
-    router.push(`/teacher/copilot/${lessonId}`);
+    if (notification.path) {
+      router.push(notification.path);
+      return;
+    }
+    if (notification.lessonId) {
+      router.push(`/teacher/copilot/${notification.lessonId}`);
+    }
   };
 
   const clearAllNotifications = () => {
@@ -782,7 +800,7 @@ export default function TeacherDashboard() {
                       return (
                         <button
                           key={notification.id}
-                          onClick={() => openReport(notification.lessonId)}
+                          onClick={() => openNotificationTarget(notification)}
                           className="notification-pop flex w-full items-start gap-3.5 border-l-2 border-transparent p-4 text-left hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-container-high)] transition-all duration-300"
                           style={{ animationDelay: `${Math.min(6, notifications.findIndex((item) => item.id === notification.id)) * 60}ms` }}
                         >
@@ -800,9 +818,9 @@ export default function TeacherDashboard() {
                             </div>
                             <p className="line-clamp-1 text-sm font-semibold leading-snug text-[var(--color-text)]">{notification.title}</p>
                             <p className="line-clamp-2 text-xs leading-relaxed text-[var(--color-muted)]">{notification.message}</p>
-                            {notification.lessonId && (
+                            {(notification.lessonId || notification.path) && (
                               <div className="pt-1 flex items-center gap-0.5 text-xs font-bold text-[var(--color-primary)] hover:opacity-90">
-                                <span>View report</span>
+                                <span>{notification.path ? 'Open lesson' : 'View report'}</span>
                                 <LucideChevronRight className="w-3.5 h-3.5" />
                               </div>
                             )}
