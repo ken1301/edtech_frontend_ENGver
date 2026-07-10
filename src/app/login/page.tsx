@@ -68,7 +68,7 @@ export default function LoginPage() {
       <div className="max-w-md w-full relative">
         <div className="text-center mb-8 space-y-2">
           <Link href="/" className="inline-flex items-center gap-2 px-3 py-1 bg-white/5 border border-white/10 rounded-full text-xs font-bold text-brand uppercase tracking-widest hover:bg-white/10 transition-colors mb-4">
-            <LayoutDashboard size={14} /> <span className="text-brand">Edu</span><span className="text-white">Flow Platform</span>
+            <LayoutDashboard size={14} /> <span className="text-brand">D</span><span className="text-white">-Friend Platform</span>
           </Link>
           <h1 className="text-4xl font-black text-white tracking-tight">
             Welcome <span className="text-brand">back</span>
