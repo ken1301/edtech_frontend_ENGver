@@ -218,6 +218,11 @@ export default function StudentExtraExercisesView({ params }: { params: Promise<
     const fetchSession = async () => {
       setIsInitializing(true);
       setInitError(null);
+      if (!resolvedParams.id || resolvedParams.id === 'undefined') {
+        setInitError('Unable to find the extra lesson to open.');
+        setIsInitializing(false);
+        return;
+      }
       try {
         let res = await aiClient.getActiveSession('extra_' + resolvedParams.id);
 
