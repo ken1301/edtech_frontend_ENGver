@@ -26,6 +26,7 @@
 .codex-vercel-files.json
 .vscode/
 test_*.js
+MIGRATION_CHECKLIST.md
 
 # debug
 npm-debug.log*
