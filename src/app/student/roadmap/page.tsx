@@ -16,6 +16,7 @@ interface ClassData {
 
 interface LessonData {
   id: string;
+  lessonId: string;
   title: string;
   status: 'locked' | 'active' | 'completed';
   extra_exercises?: Array<{
@@ -43,7 +44,7 @@ function ExtraLessonBadge({ lesson, targetClassId }: { lesson: LessonData; targe
 
   return (
     <Link
-      href={`/student/lesson/${lesson.id}/extra?class=${targetClassId}`}
+      href={`/student/lesson/${lesson.lessonId}/extra?class=${targetClassId}`}
       className="group inline-flex w-full sm:max-w-sm items-center gap-4 rounded-2xl border border-[var(--color-primary)]/25 bg-gradient-to-r from-[var(--color-primary)]/10 to-[var(--color-primary)]/5 px-5 py-4 text-left shadow-sm transition-all hover:border-[var(--color-primary)]/50 hover:shadow-md hover:-translate-y-0.5"
     >
       <span className="flex flex-col flex-1 leading-tight min-w-0">
