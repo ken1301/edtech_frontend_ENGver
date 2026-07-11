@@ -132,6 +132,15 @@ const createLessonRequestConfig = {
   headers: { 'Content-Type': 'multipart/form-data' },
 } as const;
 
+const DEMO_PITCHING_DEFAULT_TITLE = 'Solving equations without losing roots';
+const DEMO_PITCHING_DEFAULT_GOAL =
+  'Students solve x^2 = 2x by factoring, find all roots x = 0 and x = 2, and explain why dividing both sides by x loses the valid solution x = 0.';
+const DEMO_PITCHING_DEFAULT_METADATA = {
+  subject: 'math' as SubjectChoice,
+  topic: 'calculus' as TopicChoice,
+  concept: 'limit_by_factoring_and_cancellation' as ConceptChoice,
+};
+
 const toDateTimeLocalValue = (value?: string | null) => {
   if (!value) return '';
   const date = new Date(value);
@@ -223,15 +232,15 @@ function CreateLessonWizard() {
   // Global State for Lesson
   const [formData, setFormData] = useState(() => {
     const metadata = normalizeCurriculumSelection({
-      subject: searchParams.get('subject') || undefined,
-      topic: searchParams.get('topic') || undefined,
-      concept: searchParams.get('concept') || undefined,
+      subject: searchParams.get('subject') || DEMO_PITCHING_DEFAULT_METADATA.subject,
+      topic: searchParams.get('topic') || DEMO_PITCHING_DEFAULT_METADATA.topic,
+      concept: searchParams.get('concept') || DEMO_PITCHING_DEFAULT_METADATA.concept,
     });
     return {
-      title: '',
+      title: searchParams.get('title') || DEMO_PITCHING_DEFAULT_TITLE,
       ...defaultLessonMetadata,
       ...metadata,
-      lessonGoal: searchParams.get('lessonGoal') || '',
+      lessonGoal: searchParams.get('lessonGoal') || DEMO_PITCHING_DEFAULT_GOAL,
       deadline: '',
     };
   });
