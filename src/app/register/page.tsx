@@ -41,7 +41,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
-  const [inviteCode, setInviteCode] = useState('');
   const [role] = useState<'STUDENT' | 'TEACHER'>('STUDENT');
 
   const [loading, setLoading] = useState(false);
@@ -60,7 +59,6 @@ export default function RegisterPage() {
         password,
         full_name: fullName,
         role,
-        invite_code: inviteCode,
       });
 
       router.push('/login?registered=true');
@@ -165,22 +163,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-muted uppercase tracking-widest ml-1">Invite code</label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-brand transition-colors">
-                  <ShieldCheck size={18} />
-                </div>
-                <input
-                  type="text"
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  className="w-full bg-white/6 border border-white/10 rounded-2xl py-3 pl-11 pr-4 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand transition-all shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                  placeholder="Enter your activation code..."
-                  required
-                />
-              </div>
-            </div>
+
 
             <button
               type="submit"
