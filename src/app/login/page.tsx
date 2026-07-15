@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import apiClient from '@/lib/apiClient';
+import { getApiErrorMessage } from '@/lib/getApiErrorMessage';
 import {
   Lock,
   User,
@@ -12,27 +13,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
-
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof (error as { response?: unknown }).response === 'object' &&
-    (error as { response?: { data?: unknown } }).response !== null
-  ) {
-    const response = (error as { response?: { data?: { message?: unknown } } }).response;
-    if (typeof response?.data?.message === 'string') {
-      return response.data.message;
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-};
 
 export default function LoginPage() {
   const [username, setUsername] = useState('');
@@ -56,7 +36,7 @@ export default function LoginPage() {
         router.push('/student/dashboard');
       }
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Login failed. Please check your credentials and try again.'));
+      setError(getApiErrorMessage(err, 'Login failed. Please check your credentials and try again.'));
       setLoading(false);
     }
   };

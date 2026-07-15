@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import apiClient from '@/lib/apiClient';
+import { getApiErrorMessage } from '@/lib/getApiErrorMessage';
 import {
   Lock,
   User,
@@ -14,27 +15,6 @@ import {
   UserCircle,
 } from 'lucide-react';
 import Link from 'next/link';
-
-const getErrorMessage = (error: unknown, fallback: string) => {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'response' in error &&
-    typeof (error as { response?: unknown }).response === 'object' &&
-    (error as { response?: { data?: unknown } }).response !== null
-  ) {
-    const response = (error as { response?: { data?: { message?: unknown } } }).response;
-    if (typeof response?.data?.message === 'string') {
-      return response.data.message;
-    }
-  }
-
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return fallback;
-};
 
 export default function RegisterPage() {
   const [username, setUsername] = useState('');
@@ -63,7 +43,7 @@ export default function RegisterPage() {
 
       router.push('/login?registered=true');
     } catch (err: unknown) {
-      setError(getErrorMessage(err, 'Registration failed. Please review your details and try again.'));
+      setError(getApiErrorMessage(err, 'Registration failed. Please review your details and try again.'));
     } finally {
       setLoading(false);
     }
