@@ -3,12 +3,12 @@
 import React from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
 import {
   ArrowLeft, BookOpen, PlusCircle, XCircle,
   Warning, CheckCircle, Brain, Target, Users, ArrowRight,
-  SealWarning, Sparkle, ChartBar, Student, ArrowsClockwise,
+  SealWarning, Sparkle, ChartBar, Student,
   Clock
 } from '@phosphor-icons/react';
 import apiClient from '@/lib/apiClient';
@@ -79,10 +79,8 @@ function NotFoundCard({ backUrl = '/teacher/dashboard' }: { backUrl?: string }) 
 }
 
 // ─── Waiting State Card ──────────────────────────────────────────────────────
-function StatusWaitingCard({ status, onRetry, retrying }: {
+function StatusWaitingCard({ status }: {
   status: 'PENDING' | 'ANALYSING' | 'FAILED';
-  onRetry: () => void;
-  retrying: boolean;
 }) {
   const isPending = status === 'PENDING';
   const isAnalysing = status === 'ANALYSING';
@@ -117,27 +115,10 @@ function StatusWaitingCard({ status, onRetry, retrying }: {
         {isFailed && 'Unable to generate report'}
       </h3>
       <p className="text-sm text-[var(--color-muted)] max-w-md mx-auto mb-10 leading-relaxed">
-        {isPending && 'Copilot will analyze automatically once all students submit, or you can request it now.'}
+        {isPending && 'Copilot will analyze automatically once all students submit or when the lesson reaches its deadline.'}
         {isAnalysing && 'AI is evaluating the learning results of the full class. This page will refresh automatically when ready.'}
-        {isFailed && 'An error occurred during analysis. Please try again.'}
+        {isFailed && 'Automatic analysis failed. Please wait for the next automatic run or contact an administrator.'}
       </p>
-
-      {(isPending || isFailed) && (
-        <button
-          onClick={onRetry}
-          disabled={retrying}
-          className={`inline-flex items-center gap-2 px-8 py-3.5 rounded-xl font-semibold text-white transition-all disabled:opacity-50 shadow-lg ${
-            isFailed
-              ? 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/25'
-              : 'bg-[var(--color-primary)] hover:opacity-90 shadow-[var(--color-primary)]/25'
-          }`}
-        >
-          {retrying
-            ? <><motion.div className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white" animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }} />Processing...</>
-            : <><ArrowsClockwise size={18} weight="bold" />{isFailed ? 'Retry' : 'Analyze now'}</>
-          }
-        </button>
-      )}
     </div>
   );
 }
@@ -146,7 +127,6 @@ function StatusWaitingCard({ status, onRetry, retrying }: {
 export default function CopilotReportPage() {
   const params = useParams();
   const router = useRouter();
-  const queryClient = useQueryClient();
   const lessonId = params.lessonId as string;
 
   const [backUrl, setBackUrl] = React.useState('/teacher/dashboard');
@@ -172,11 +152,6 @@ export default function CopilotReportPage() {
       if (s?.status === 'PENDING' || s?.status === 'ANALYSING') return 5000;
       return false;
     },
-  });
-
-  const retryMutation = useMutation({
-    mutationFn: async () => apiClient.post(`/teacher/copilot/${lessonId}/analyse`),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['teacher', 'copilot', lessonId, 'report'] }),
   });
 
   const dismissMutation = useMutation({
@@ -303,8 +278,6 @@ export default function CopilotReportPage() {
         {(status === 'PENDING' || status === 'ANALYSING' || status === 'FAILED') && (
           <StatusWaitingCard
             status={status as 'PENDING' | 'ANALYSING' | 'FAILED'}
-            onRetry={() => retryMutation.mutate()}
-            retrying={retryMutation.isPending}
           />
         )}
 

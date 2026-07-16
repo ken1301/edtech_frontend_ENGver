@@ -177,15 +177,6 @@ const RoadmapView = ({ classId }: { classId: string | null }) => {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {item.lessonId && (
-              <Link
-                href={`/teacher/copilot/${item.lessonId}?classId=${classId || ''}`}
-                className="flex items-center gap-1.5 rounded-lg border border-[var(--color-primary)]/30 bg-[var(--color-primary)]/5 px-3 py-1.5 text-sm font-semibold text-[var(--color-primary)] transition-colors hover:bg-[var(--color-primary)]/10"
-                title="View AI Copilot report"
-              >
-                <LucideBookOpen className="h-4 w-4" /> Copilot
-              </Link>
-            )}
             <button
               onClick={() => {
                 if (window.confirm('Are you sure you want to delete this lesson?')) deleteMutation.mutate(item.id);
