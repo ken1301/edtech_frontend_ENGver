@@ -93,6 +93,7 @@ export default function RubricReport({ params }: { params: Promise<{ id: string 
     ? Math.round(reportData.sessionProgress)
     : reportData?.score || 0;
   const overallStatus = overallScore >= 50 ? 'PASSED' : 'FAILED';
+  const lessonTitle = reportData?.lessonTitle || `Lesson ${resolvedParams.id}`;
 
   if (isLoadingClasses || (classes.length > 0 && isLoadingReport)) {
     return <div className="flex justify-center py-20 text-[var(--color-muted)]">Loading your evaluation report...</div>;
@@ -145,7 +146,7 @@ export default function RubricReport({ params }: { params: Promise<{ id: string 
     <div className="max-w-4xl mx-auto py-8">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-on-surface)] mb-2">Lesson Review {resolvedParams.id}</h1>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-on-surface)] mb-2">Lesson Review: {lessonTitle}</h1>
           <p className="text-[var(--color-on-surface-variant)]">Here is your detailed AI-supported report for this lesson.</p>
         </div>
         <div className="text-right">
