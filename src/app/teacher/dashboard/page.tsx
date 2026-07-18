@@ -76,6 +76,35 @@ type TeacherStudentItem = {
   full_name?: string | null;
 };
 
+type StudentPresenceStatus = 'online' | 'idle' | 'offline';
+
+type StudentPresenceItem = {
+  studentId: string;
+  userId: string;
+  fullName?: string | null;
+  username?: string | null;
+  status: StudentPresenceStatus;
+  lastSeenAt?: string | null;
+  currentClassId?: string | null;
+  currentLessonId?: string | null;
+};
+
+type StudentActivityEventItem = {
+  id: string;
+  event_type: string;
+  source?: string | null;
+  class_id?: string | null;
+  lesson_id?: string | null;
+  session_id?: string | null;
+  metadata?: Record<string, unknown> | null;
+  created_at: string;
+};
+
+type StudentActivityHistoryResponse = {
+  data: StudentActivityEventItem[];
+  nextCursor?: string;
+};
+
 type TeacherClassItem = {
   class_id: string;
   class_name: string;
@@ -123,6 +152,48 @@ const getErrorMessage = (error: unknown, fallback: string) => {
     if (typeof typedError.message === 'string') return typedError.message;
   }
   return fallback;
+};
+
+const presenceCopy: Record<StudentPresenceStatus, { label: string; dot: string; badge: string }> = {
+  online: {
+    label: 'Online',
+    dot: 'bg-emerald-500',
+    badge: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
+  },
+  idle: {
+    label: 'Idle',
+    dot: 'bg-amber-500',
+    badge: 'bg-amber-500/10 text-amber-600 border-amber-500/20',
+  },
+  offline: {
+    label: 'Offline',
+    dot: 'bg-slate-400',
+    badge: 'bg-slate-500/10 text-[var(--color-muted)] border-[var(--color-outline-variant)]',
+  },
+};
+
+const formatLocalDateTime = (value?: string | null) => {
+  if (!value) return 'No activity yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'No activity yet';
+  return new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  }).format(date);
+};
+
+const formatActivityEvent = (eventType?: string) => {
+  const labelMap: Record<string, string> = {
+    AUTH_LOGIN: 'Logged in',
+    AUTH_LOGOUT: 'Logged out',
+    SOCKET_CONNECTED: 'Connected',
+    SOCKET_DISCONNECTED: 'Disconnected',
+    HEARTBEAT: 'Heartbeat',
+    LESSON_OPENED: 'Opened lesson',
+    EXTRA_LESSON_OPENED: 'Opened extra lesson',
+    AI_SESSION_STARTED: 'Started AI session',
+  };
+  return labelMap[eventType || ''] || (eventType ? eventType.replace(/_/g, ' ').toLowerCase() : 'Activity');
 };
 
 const RoadmapView = ({ classId }: { classId: string | null }) => {
@@ -566,6 +637,41 @@ export default function TeacherDashboard() {
   const students = useMemo(() => (Array.isArray(studentsData) ? studentsData : []), [studentsData]);
   const activeStudentId = selectedStudentId || students[0]?.student_id || null;
   const activeExerciseId = selectedExerciseId || null;
+
+  const { data: presenceData } = useQuery<StudentPresenceItem[]>({
+    queryKey: ['teacher', 'classes', selectedClassId, 'activity', 'presence'],
+    queryFn: async () => {
+      const res = await apiClient.get(`/teacher/classes/${selectedClassId}/activity/presence`);
+      return res.data?.data || [];
+    },
+    enabled: !!selectedClassId,
+    staleTime: 1000 * 15,
+    refetchInterval: 30000,
+  });
+
+  const presenceByStudentId = useMemo(() => {
+    const map = new Map<string, StudentPresenceItem>();
+    (presenceData || []).forEach((item) => map.set(item.studentId, item));
+    return map;
+  }, [presenceData]);
+
+  const activeStudentPresence = activeStudentId ? presenceByStudentId.get(activeStudentId) : undefined;
+
+  const { data: activityHistoryData, isLoading: loadingActivityHistory } = useQuery<StudentActivityHistoryResponse>({
+    queryKey: ['teacher', 'classes', selectedClassId, 'students', activeStudentId, 'activity-history'],
+    queryFn: async () => {
+      const res = await apiClient.get(`/teacher/classes/${selectedClassId}/students/${activeStudentId}/activity?limit=20`);
+      return {
+        data: res.data?.data || [],
+        nextCursor: res.data?.nextCursor,
+      };
+    },
+    enabled: !!selectedClassId && !!activeStudentId && activeTab === 'student-list',
+    staleTime: 1000 * 15,
+    refetchInterval: 30000,
+  });
+
+  const activityEvents = activityHistoryData?.data || [];
 
   const filteredStudents = useMemo(
     () =>
@@ -1159,6 +1265,9 @@ export default function TeacherDashboard() {
                       filteredStudents.map((student, index) => {
                         const isActive = selectedStudentId === student.student_id;
                         const initials = getInitials(student.full_name || undefined, student.student_id);
+                        const presence = presenceByStudentId.get(student.student_id);
+                        const status = presence?.status || 'offline';
+                        const statusUi = presenceCopy[status];
                         const colors = [
                           { bg: 'bg-emerald-100', text: 'text-emerald-700', border: 'border-emerald-200' },
                           { bg: 'bg-rose-100', text: 'text-rose-700', border: 'border-rose-200' },
@@ -1179,14 +1288,20 @@ export default function TeacherDashboard() {
                             <div className="flex items-center gap-4">
                               <div className="relative">
                                 <div className={`flex h-12 w-12 items-center justify-center rounded-full border font-bold ${theme.bg} ${theme.text} ${theme.border}`}>{initials}</div>
-                                <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-[var(--color-surface)] bg-emerald-500" />
+                                <div className={`absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-[var(--color-surface)] ${statusUi.dot}`} />
                               </div>
                               <div>
                                 <h4 className="text-sm font-semibold text-[var(--color-text)]">{student.full_name || `Student ${student.student_id}`}</h4>
                                 <p className="mt-0.5 text-xs text-[var(--color-muted)]">ID: {student.student_id}</p>
+                                <p className="mt-1 text-[11px] text-[var(--color-muted)]">Last seen: {formatLocalDateTime(presence?.lastSeenAt)}</p>
                               </div>
                             </div>
-                            <LucideChevronRight className="h-5 w-5 text-[var(--color-muted)]" />
+                            <div className="flex items-center gap-3">
+                              <span className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${statusUi.badge}`}>
+                                {statusUi.label}
+                              </span>
+                              <LucideChevronRight className="h-5 w-5 text-[var(--color-muted)]" />
+                            </div>
                           </div>
                         );
                       })
@@ -1257,6 +1372,19 @@ export default function TeacherDashboard() {
                       <h2 className="text-3xl font-bold text-[var(--color-text)]">{studentMetrics?.studentName || `Student ${activeStudentId}`}</h2>
                       <p className="mb-6 text-sm text-[var(--color-muted)]">Student ID: #{activeStudentId}</p>
 
+                      <div className="mb-6 rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--color-muted)]">Presence</span>
+                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${presenceCopy[activeStudentPresence?.status || 'offline'].badge}`}>
+                            {presenceCopy[activeStudentPresence?.status || 'offline'].label}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-sm text-[var(--color-muted)]">Last seen: {formatLocalDateTime(activeStudentPresence?.lastSeenAt)}</p>
+                        {activeStudentPresence?.currentLessonId && (
+                          <p className="mt-1 text-xs text-[var(--color-muted)]">Current lesson: {activeStudentPresence.currentLessonId}</p>
+                        )}
+                      </div>
+
                       <div className="mb-6 grid grid-cols-2 gap-4">
                         <div className="relative overflow-hidden rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-4 shadow-sm">
                           <div className="absolute -right-4 -top-4 h-16 w-16 rounded-full bg-emerald-50 opacity-50" />
@@ -1291,9 +1419,39 @@ export default function TeacherDashboard() {
 
                       <div>
                         <h3 className="mb-3 text-sm font-semibold text-[var(--color-text)]">Recent activity</h3>
-                        <div className="rounded-xl border border-dashed border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-4 text-sm text-[var(--color-muted)]">
-                          This feature is still under development. Data will be integrated from the tracking system soon.
-                        </div>
+                        {loadingActivityHistory ? (
+                          <div className="space-y-3">
+                            {[1, 2, 3].map((item) => (
+                              <Skeleton key={item} className="h-16 rounded-xl" />
+                            ))}
+                          </div>
+                        ) : activityEvents.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-4 text-sm text-[var(--color-muted)]">
+                            No activity events have been recorded for this student yet.
+                          </div>
+                        ) : (
+                          <div className="space-y-3">
+                            {activityEvents.map((event) => (
+                              <div key={event.id} className="rounded-xl border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-4">
+                                <div className="flex items-start justify-between gap-3">
+                                  <div>
+                                    <p className="text-sm font-semibold text-[var(--color-text)]">{formatActivityEvent(event.event_type)}</p>
+                                    <p className="mt-1 text-xs text-[var(--color-muted)]">
+                                      {event.source || 'system'} - {formatLocalDateTime(event.created_at)}
+                                    </p>
+                                  </div>
+                                  <span className="text-[10px] uppercase tracking-[0.16em] text-[var(--color-muted)]">{event.event_type}</span>
+                                </div>
+                                {(event.lesson_id || event.session_id) && (
+                                  <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-[var(--color-muted)]">
+                                    {event.lesson_id && <span className="rounded-full bg-[var(--color-surface)] px-2 py-1">Lesson: {event.lesson_id}</span>}
+                                    {event.session_id && <span className="rounded-full bg-[var(--color-surface)] px-2 py-1">Session: {event.session_id}</span>}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
