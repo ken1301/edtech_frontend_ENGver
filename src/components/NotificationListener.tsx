@@ -84,6 +84,7 @@ export default function NotificationListener() {
   };
   const [toasts, setToasts] = useState<Toast[]>([]);
   const socketRef = useRef<Socket | null>(null);
+  const heartbeatIntervalRef = useRef<number | null>(null);
   const reconnectingAuthRef = useRef(false);
 
   const fetchSocketToken = async (): Promise<string> => {
@@ -101,10 +102,45 @@ export default function NotificationListener() {
     let active = true;
 
     const disconnectSocket = () => {
+      if (heartbeatIntervalRef.current) {
+        window.clearInterval(heartbeatIntervalRef.current);
+        heartbeatIntervalRef.current = null;
+      }
       if (socketRef.current) {
+        if (socketRef.current.connected) {
+          socketRef.current.emit('presence:offline');
+        }
         socketRef.current.disconnect();
         socketRef.current = null;
       }
+    };
+
+    const buildPresencePayload = () => {
+      const payload: { classId?: string; lessonId?: string } = {};
+      try {
+        const classId = window.localStorage.getItem('currentClassId');
+        const lessonMatch = pathname?.match(/\/student\/lesson\/([^/]+)/);
+        if (classId) payload.classId = classId;
+        if (lessonMatch?.[1]) payload.lessonId = decodeURIComponent(lessonMatch[1]);
+      } catch {
+        // Presence metadata is best-effort only.
+      }
+      return payload;
+    };
+
+    const startHeartbeat = (socket: Socket) => {
+      if (heartbeatIntervalRef.current) {
+        window.clearInterval(heartbeatIntervalRef.current);
+      }
+
+      const sendHeartbeat = () => {
+        if (socket.connected) {
+          socket.emit('presence:heartbeat', buildPresencePayload());
+        }
+      };
+
+      sendHeartbeat();
+      heartbeatIntervalRef.current = window.setInterval(sendHeartbeat, 25000);
     };
 
     const connectSocket = async () => {
@@ -121,6 +157,8 @@ export default function NotificationListener() {
           socketRef.current.auth = { token };
           if (!socketRef.current.connected) {
             socketRef.current.connect();
+          } else {
+            startHeartbeat(socketRef.current);
           }
           return;
         }
@@ -139,10 +177,15 @@ export default function NotificationListener() {
 
         socket.on('connect', () => {
           reconnectingAuthRef.current = false;
+          startHeartbeat(socket);
           console.log('Connected to Notifications Socket.IO');
         });
 
         socket.on('disconnect', (reason) => {
+          if (heartbeatIntervalRef.current) {
+            window.clearInterval(heartbeatIntervalRef.current);
+            heartbeatIntervalRef.current = null;
+          }
           console.warn('Notifications Socket.IO disconnected:', reason);
         });
 
@@ -211,9 +254,13 @@ export default function NotificationListener() {
     }
 
     void connectSocket();
+    window.addEventListener('pagehide', disconnectSocket);
+    window.addEventListener('beforeunload', disconnectSocket);
 
     return () => {
       active = false;
+      window.removeEventListener('pagehide', disconnectSocket);
+      window.removeEventListener('beforeunload', disconnectSocket);
     };
   }, [pathname]);
 
