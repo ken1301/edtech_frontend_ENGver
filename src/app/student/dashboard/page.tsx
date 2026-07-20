@@ -8,6 +8,29 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '@/lib/apiClient';
 import { trackEvent, EVENTS } from '@/lib/tracking';
 
+type StudentClassSummary = {
+  class_id: string;
+  progress?: number;
+  completed_lessons?: number;
+  total_lessons?: number;
+};
+
+function calculateOverallLearningProgress(classes: StudentClassSummary[]) {
+  const totalLessons = classes.reduce((sum, cls) => sum + Number(cls.total_lessons || 0), 0);
+  const completedLessons = classes.reduce((sum, cls) => sum + Number(cls.completed_lessons || 0), 0);
+
+  if (totalLessons > 0) {
+    return Math.round((completedLessons / totalLessons) * 100);
+  }
+
+  if (classes.length > 0) {
+    const progressSum = classes.reduce((sum, cls) => sum + Number(cls.progress || 0), 0);
+    return Math.round(progressSum / classes.length);
+  }
+
+  return 0;
+}
+
 export default function StudentDashboard() {
   const queryClient = useQueryClient();
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
@@ -71,6 +94,13 @@ export default function StudentDashboard() {
     staleTime: 1000 * 60 * 2,
   });
 
+  const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
+  const classes = Array.isArray(classesData) ? classesData : [];
+  const learningProgress = React.useMemo(
+    () => calculateOverallLearningProgress(classes),
+    [classes],
+  );
+
   if (loadingUser) {
     return (
       <div className="space-y-[var(--spacing-gutter)] animate-pulse">
@@ -96,10 +126,7 @@ export default function StudentDashboard() {
   const thinking = metrics?.thinking_score || 0;
   const skill = metrics?.skill_score || 0;
   const result = metrics?.result_score || 0;
-  const overallProgress = Math.round((thinking + skill + result) / 3) || 0;
   const avgQuizScore = result || 0;
-  const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
-  const classes = Array.isArray(classesData) ? classesData : [];
   const radarData = [thinking, skill, result];
 
   const CalendarModal = ({ isOpen, onClose, assignments }: { isOpen: boolean, onClose: () => void, assignments: any[] }) => {
@@ -217,10 +244,10 @@ export default function StudentDashboard() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium text-[var(--color-text)]">Overall progress</span>
-                  <span className="text-sm font-medium text-emerald-600">{overallProgress}%</span>
+                  <span className="text-sm font-medium text-emerald-600">{learningProgress}%</span>
                 </div>
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${overallProgress}%` }}></div>
+                  <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${learningProgress}%` }}></div>
                 </div>
                 <div className="flex items-center justify-between mt-4">
                   <span className="text-sm font-medium text-[var(--color-text)]">Average quiz score</span>
@@ -280,6 +307,7 @@ export default function StudentDashboard() {
                   { bg: 'bg-rose-600', light: 'bg-rose-50', text: 'text-rose-700', hover: 'hover:bg-rose-700' },
                 ];
                 const theme = colors[i % colors.length];
+                const moduleProgress = Number(cls.progress || 0);
 
                 return (
                   <div key={cls.class_id} className="bg-[var(--color-surface)] rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] p-4 shadow-[0_4px_10px_rgba(0,0,0,0.05)] hover:shadow-md hover:-translate-y-px transition-all flex flex-col h-full relative overflow-hidden group">
@@ -301,10 +329,10 @@ export default function StudentDashboard() {
                     <div className="mt-auto pt-4 border-t border-[var(--color-outline-variant)]">
                       <div className="flex justify-between items-end mb-2">
                         <span className="text-xs text-[var(--color-on-surface-variant)]">Module progress</span>
-                        <span className="text-xs font-medium text-[var(--color-text)]">{overallProgress}%</span>
+                        <span className="text-xs font-medium text-[var(--color-text)]">{moduleProgress}%</span>
                       </div>
                       <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden mb-4">
-                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${overallProgress}%` }}></div>
+                        <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${moduleProgress}%` }}></div>
                       </div>
                       <Link href={`/student/roadmap?class=${cls.class_id}`} className={`block text-center w-full ${theme.bg} text-white ${theme.hover} rounded-lg py-2 text-sm font-medium transition-colors`}>
                         Open roadmap

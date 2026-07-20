@@ -7,6 +7,12 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { LucideLogOut } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 
+type StudentClassSummary = {
+  progress?: number;
+  completed_lessons?: number;
+  total_lessons?: number;
+};
+
 const getInitials = (name?: string, fallbackId?: string) => {
   if (name) {
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -48,14 +54,6 @@ export default function StudentLayout({
     staleTime: 1000 * 60 * 10,
   });
 
-  const { data: metrics } = useQuery({
-    queryKey: ['student', 'metrics'],
-    queryFn: async () => {
-      const res = await apiClient.get('/student/me/metrics');
-      return res.data;
-    },
-  });
-
   const { data: classesData } = useQuery({
     queryKey: ['student', 'classes'],
     queryFn: async () => {
@@ -66,9 +64,30 @@ export default function StudentLayout({
 
   const classes = Array.isArray(classesData) ? classesData : [];
   const showNavigationChrome = !isLessonView;
+  const totalLessons = classes.reduce(
+    (sum: number, cls: StudentClassSummary) => sum + Number(cls.total_lessons || 0),
+    0,
+  );
+  const completedLessons = classes.reduce(
+    (sum: number, cls: StudentClassSummary) => sum + Number(cls.completed_lessons || 0),
+    0,
+  );
+  const averageClassProgress =
+    classes.length > 0
+      ? Math.round(
+          classes.reduce(
+            (sum: number, cls: StudentClassSummary) => sum + Number(cls.progress || 0),
+            0,
+          ) / classes.length,
+        )
+      : 0;
+  const learningProgress =
+    totalLessons > 0
+      ? Math.round((completedLessons / totalLessons) * 100)
+      : averageClassProgress;
 
-  const level = Math.floor((metrics?.overall_progress || 0) / 20) + 1;
-  const expProgress = ((metrics?.overall_progress || 0) % 20) * 5;
+  const level = Math.max(1, Math.min(5, Math.ceil(learningProgress / 20)));
+  const expProgress = learningProgress;
 
   return (
     <div className="app-shell-accent flex min-h-screen bg-transparent">
