@@ -3,16 +3,32 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import RadarChart from '@/components/RadarChart';
-import { LucideBookOpen, LucideCalendar, LucideCheck, LucideUser, LucideLoader2, LucidePlus, LucideX } from 'lucide-react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { LucideBookOpen, LucideCalendar, LucideCheck, LucideUser, LucideLoader2, LucidePlus, LucideX, LucideArrowRight, LucideSparkles } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient, useQueries } from '@tanstack/react-query';
 import apiClient from '@/lib/apiClient';
 import { trackEvent, EVENTS } from '@/lib/tracking';
 
 type StudentClassSummary = {
   class_id: string;
+  class_name?: string;
+  teacher_name?: string;
   progress?: number;
   completed_lessons?: number;
   total_lessons?: number;
+};
+
+type RoadmapLessonSummary = {
+  id: string;
+  lessonId?: string;
+  title: string;
+  status: 'locked' | 'active' | 'completed';
+  extra_exercises?: Array<unknown>;
+};
+
+type AssignmentSummary = {
+  assignment_id: string;
+  title: string;
+  due_date?: string;
 };
 
 function calculateOverallLearningProgress(classes: StudentClassSummary[]) {
@@ -29,6 +45,59 @@ function calculateOverallLearningProgress(classes: StudentClassSummary[]) {
   }
 
   return 0;
+}
+
+function getNextAction(classes: StudentClassSummary[], roadmaps: RoadmapLessonSummary[][], assignments: AssignmentSummary[]) {
+  const pendingAssignment = assignments[0];
+  if (pendingAssignment) {
+    return {
+      label: 'Action item',
+      title: pendingAssignment.title,
+      description: pendingAssignment.due_date
+        ? `Due: ${new Date(pendingAssignment.due_date).toLocaleDateString('en-US')}`
+        : 'Complete this assigned activity to stay on track.',
+      href: `/student/lesson/${pendingAssignment.assignment_id}/part1`,
+      tone: 'urgent',
+    };
+  }
+
+  for (let i = 0; i < classes.length; i += 1) {
+    const lesson = (roadmaps[i] || []).find((item) => item.status === 'active');
+    if (lesson) {
+      return {
+        label: 'Continue learning',
+        title: lesson.title,
+        description: `Class ${classes[i]?.class_name || 'current class'} · next unlocked lesson`,
+        href: `/student/lesson/${lesson.id}/part1?class=${classes[i]?.class_id}`,
+        tone: 'primary',
+      };
+    }
+  }
+
+  for (let i = 0; i < classes.length; i += 1) {
+    const lessonWithExtra = (roadmaps[i] || []).find((item) => (item.extra_exercises?.length || 0) > 0);
+    if (lessonWithExtra) {
+      return {
+        label: 'Personalized practice',
+        title: lessonWithExtra.title,
+        description: 'AI has prepared a practice set for you.',
+        href: `/student/lesson/${lessonWithExtra.lessonId || lessonWithExtra.id}/extra?class=${classes[i]?.class_id}`,
+        tone: 'extra',
+      };
+    }
+  }
+
+  if (classes.length > 0) {
+    return {
+      label: 'Open roadmap',
+      title: 'You are caught up',
+      description: 'Review completed lessons or wait for your teacher to publish the next one.',
+      href: `/student/roadmap?class=${classes[0].class_id}`,
+      tone: 'done',
+    };
+  }
+
+  return null;
 }
 
 export default function StudentDashboard() {
@@ -96,6 +165,18 @@ export default function StudentDashboard() {
 
   const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
   const classes = Array.isArray(classesData) ? classesData : [];
+  const roadmapQueries = useQueries({
+    queries: classes.map((cls: StudentClassSummary) => ({
+      queryKey: ['student', 'dashboard', 'roadmap', cls.class_id],
+      queryFn: async () => {
+        const res = await apiClient.get(`/student/classes/${cls.class_id}/roadmap`);
+        return Array.isArray(res.data) ? (res.data as RoadmapLessonSummary[]) : [];
+      },
+      enabled: Boolean(cls.class_id),
+      staleTime: 1000 * 60 * 2,
+    })),
+  });
+  const roadmaps = roadmapQueries.map((query) => query.data || []);
   const learningProgress = React.useMemo(
     () => calculateOverallLearningProgress(classes),
     [classes],
@@ -127,6 +208,8 @@ export default function StudentDashboard() {
   const skill = metrics?.skill_score || 0;
   const result = metrics?.result_score || 0;
   const avgQuizScore = result || 0;
+  const hasMetricsData = Boolean(metrics) && [thinking, skill, result].some((score) => score > 0);
+  const nextAction = getNextAction(classes, roadmaps, assignments);
   const radarData = [thinking, skill, result];
 
   const CalendarModal = ({ isOpen, onClose, assignments }: { isOpen: boolean, onClose: () => void, assignments: any[] }) => {
@@ -225,6 +308,105 @@ export default function StudentDashboard() {
         </div>
       </div>
 
+      {nextAction && (
+        <section className="rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-5 shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-start gap-4">
+              <div className={`mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${nextAction.tone === 'urgent' ? 'bg-rose-50 text-rose-600' : nextAction.tone === 'extra' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                <LucideSparkles className="h-6 w-6" />
+              </div>
+              <div>
+                <p className="mb-1 text-xs font-bold uppercase tracking-[0.18em] text-[var(--color-primary)]">{nextAction.label}</p>
+                <h3 className="text-xl font-bold text-[var(--color-text)]">{nextAction.title}</h3>
+                <p className="mt-1 text-sm text-[var(--color-on-surface-variant)]">{nextAction.description}</p>
+              </div>
+            </div>
+            <Link href={nextAction.href} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--color-primary)] px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-indigo-700">
+              Start now
+              <LucideArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </section>
+      )}
+
+      {classes.length > 0 && (
+        <section className="grid grid-cols-1 gap-5 mb-[var(--spacing-margin-desktop)] lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-6 shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
+            <div className="mb-6 flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600">
+                <LucideBookOpen className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-[20px] font-semibold text-[var(--color-text)]">Learning progress</h3>
+                <p className="text-sm text-[var(--color-on-surface-variant)]">Calculated from completed lessons across your enrolled classes.</p>
+              </div>
+            </div>
+            <div className="space-y-5">
+              <div>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-sm font-medium text-[var(--color-text)]">Overall progress</span>
+                  <span className="text-sm font-bold text-emerald-600">{learningProgress}%</span>
+                </div>
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${learningProgress}%` }} />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="rounded-2xl bg-[var(--color-surface-container-high)] p-4">
+                  <p className="text-[var(--color-muted)]">Completed lessons</p>
+                  <p className="mt-1 text-2xl font-bold text-[var(--color-text)]">{classes.reduce((sum, cls) => sum + Number(cls.completed_lessons || 0), 0)}</p>
+                </div>
+                <div className="rounded-2xl bg-[var(--color-surface-container-high)] p-4">
+                  <p className="text-[var(--color-muted)]">Total lessons</p>
+                  <p className="mt-1 text-2xl font-bold text-[var(--color-text)]">{classes.reduce((sum, cls) => sum + Number(cls.total_lessons || 0), 0)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-6 shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
+            <h3 className="text-[20px] font-semibold text-[var(--color-text)] mb-2">Capability profile</h3>
+            <p className="text-sm text-[var(--color-on-surface-variant)] mb-5">
+              This profile appears after you complete enough activities for a reliable capability signal.
+            </p>
+            {hasMetricsData ? (
+              <div className="flex flex-col gap-5 md:flex-row md:items-center">
+                <div className="w-full md:w-1/3 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-[var(--color-text)]">Average quiz score</span>
+                    <span className="text-sm font-bold text-[var(--color-primary)]">{avgQuizScore}%</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                    <div className="h-full rounded-full bg-[var(--color-primary)]" style={{ width: `${avgQuizScore}%` }} />
+                  </div>
+                </div>
+                <div className="h-[240px] w-full md:w-2/3">
+                  <RadarChart
+                    labels={['Mathematical thinking', 'Calculation skills', 'Problem solving']}
+                    datasets={[{
+                      label: 'Capability score',
+                      data: radarData,
+                      backgroundColor: 'rgba(70, 72, 212, 0.2)',
+                      borderColor: '#4648d4',
+                      pointBackgroundColor: '#4648d4',
+                      pointBorderColor: '#fff',
+                      borderWidth: 2,
+                    }]}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="flex min-h-[220px] flex-col items-center justify-center rounded-2xl border border-dashed border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)] p-6 text-center">
+                <LucideSparkles className="mb-3 h-8 w-8 text-[var(--color-primary)]" />
+                <p className="text-base font-semibold text-[var(--color-text)]">Not enough capability data yet</p>
+                <p className="mt-1 max-w-md text-sm text-[var(--color-on-surface-variant)]">
+                  Complete more lessons or practice sets so the system can show a more accurate skill radar.
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
       {classes.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-[var(--radius-2xl)] p-8 text-center shadow-sm mb-[var(--spacing-margin-desktop)] flex flex-col items-center justify-center gap-3">
           <div className="text-3xl">!</div>
@@ -234,7 +416,7 @@ export default function StudentDashboard() {
           </p>
         </div>
       ) : (
-        <section className="bg-[var(--color-surface)] rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] p-6 shadow-[0_4px_10px_rgba(0,0,0,0.05)] mb-[var(--spacing-margin-desktop)]">
+        <section className="hidden bg-[var(--color-surface)] rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] p-6 shadow-[0_4px_10px_rgba(0,0,0,0.05)] mb-[var(--spacing-margin-desktop)]">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             <div className="w-full md:w-1/3 flex-shrink-0">
               <h3 className="text-[20px] font-semibold text-[var(--color-text)] mb-2">Capability Snapshot</h3>
