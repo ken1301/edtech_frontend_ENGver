@@ -31,6 +31,12 @@ type AssignmentSummary = {
   due_date?: string;
 };
 
+function getAssignmentTime(assignment: AssignmentSummary) {
+  if (!assignment.due_date) return Number.MAX_SAFE_INTEGER;
+  const time = new Date(assignment.due_date).getTime();
+  return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
 function calculateOverallLearningProgress(classes: StudentClassSummary[]) {
   const totalLessons = classes.reduce((sum, cls) => sum + Number(cls.total_lessons || 0), 0);
   const completedLessons = classes.reduce((sum, cls) => sum + Number(cls.completed_lessons || 0), 0);
@@ -136,7 +142,7 @@ export default function StudentDashboard() {
     staleTime: 1000 * 60 * 10,
   });
 
-  const { data: metrics } = useQuery({
+  const { data: metrics, isError: isMetricsError } = useQuery({
     queryKey: ['student', 'metrics'],
     queryFn: async () => {
       const res = await apiClient.get('/student/me/metrics');
@@ -145,7 +151,7 @@ export default function StudentDashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: classesData } = useQuery({
+  const { data: classesData, isLoading: isClassesLoading, isError: isClassesError } = useQuery({
     queryKey: ['student', 'classes'],
     queryFn: async () => {
       const res = await apiClient.get('/student/me/classes');
@@ -154,7 +160,7 @@ export default function StudentDashboard() {
     staleTime: 1000 * 60 * 5,
   });
 
-  const { data: assignmentsData } = useQuery({
+  const { data: assignmentsData, isLoading: isAssignmentsLoading, isError: isAssignmentsError } = useQuery({
     queryKey: ['student', 'assignments'],
     queryFn: async () => {
       const res = await apiClient.get('/student/me/assignments');
@@ -163,7 +169,11 @@ export default function StudentDashboard() {
     staleTime: 1000 * 60 * 2,
   });
 
-  const assignments = Array.isArray(assignmentsData) ? assignmentsData : [];
+  const assignmentsRaw = Array.isArray(assignmentsData) ? assignmentsData : [];
+  const assignments = React.useMemo(
+    () => [...assignmentsRaw].sort((a, b) => getAssignmentTime(a) - getAssignmentTime(b)),
+    [assignmentsRaw],
+  );
   const classes = Array.isArray(classesData) ? classesData : [];
   const roadmapQueries = useQueries({
     queries: classes.map((cls: StudentClassSummary) => ({
@@ -209,7 +219,10 @@ export default function StudentDashboard() {
   const result = metrics?.result_score || 0;
   const avgQuizScore = result || 0;
   const hasMetricsData = Boolean(metrics) && [thinking, skill, result].some((score) => score > 0);
-  const nextAction = getNextAction(classes, roadmaps, assignments);
+  const isRoadmapLoading = roadmapQueries.some((query) => query.isLoading || query.isFetching);
+  const isDashboardLoading = isClassesLoading || isAssignmentsLoading;
+  const nextAction = assignments.length > 0 || !isRoadmapLoading ? getNextAction(classes, roadmaps, assignments) : null;
+  const hasDashboardDataError = isClassesError || isAssignmentsError || isMetricsError || roadmapQueries.some((query) => query.isError);
   const radarData = [thinking, skill, result];
 
   const CalendarModal = ({ isOpen, onClose, assignments }: { isOpen: boolean, onClose: () => void, assignments: any[] }) => {
@@ -307,6 +320,19 @@ export default function StudentDashboard() {
           </p>
         </div>
       </div>
+
+      {hasDashboardDataError && (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+          Some dashboard data could not be loaded. You can still continue learning, and the dashboard will refresh when the connection is stable.
+        </div>
+      )}
+
+      {isDashboardLoading && (
+        <section className="grid grid-cols-1 gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="h-44 animate-pulse rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)]" />
+          <div className="h-44 animate-pulse rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)]" />
+        </section>
+      )}
 
       {nextAction && (
         <section className="rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] bg-[var(--color-surface)] p-5 shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
@@ -407,7 +433,7 @@ export default function StudentDashboard() {
         </section>
       )}
 
-      {classes.length === 0 ? (
+      {!isDashboardLoading && classes.length === 0 ? (
         <div className="bg-amber-50 border border-amber-200 rounded-[var(--radius-2xl)] p-8 text-center shadow-sm mb-[var(--spacing-margin-desktop)] flex flex-col items-center justify-center gap-3">
           <div className="text-3xl">!</div>
           <h3 className="text-lg font-bold text-amber-900">No class enrollment yet</h3>
@@ -415,7 +441,7 @@ export default function StudentDashboard() {
             You are not enrolled in any class yet. Enter a class code below to join, unlock your roadmap, and view your learning analytics.
           </p>
         </div>
-      ) : (
+      ) : !isDashboardLoading ? (
         <section className="hidden bg-[var(--color-surface)] rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] p-6 shadow-[0_4px_10px_rgba(0,0,0,0.05)] mb-[var(--spacing-margin-desktop)]">
           <div className="flex flex-col md:flex-row gap-6 items-center">
             <div className="w-full md:w-1/3 flex-shrink-0">
@@ -456,10 +482,10 @@ export default function StudentDashboard() {
             </div>
           </div>
         </section>
-      )}
+      ) : null}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-[var(--spacing-margin-desktop)]">
-        <section className="lg:col-span-3">
+        <section className="lg:col-span-2">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[20px] font-semibold text-[var(--color-text)]">Enrolled classes</h3>
             <div className="flex gap-4 items-center">
@@ -470,7 +496,9 @@ export default function StudentDashboard() {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {classes.length === 0 ? (
+            {isDashboardLoading ? (
+              <div className="col-span-1 sm:col-span-2 h-40 animate-pulse rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] bg-[var(--color-surface-container-high)]" />
+            ) : classes.length === 0 ? (
               <div className="col-span-1 sm:col-span-2 py-12 text-center bg-[var(--color-surface-container-high)] border border-[var(--color-outline-variant)] border-dashed rounded-[var(--radius-2xl)]">
                 <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <LucideBookOpen className="w-8 h-8 text-slate-400" />
@@ -527,7 +555,7 @@ export default function StudentDashboard() {
           </div>
         </section>
 
-        <section className="hidden lg:col-span-1">
+        <section className="lg:col-span-1">
           <h3 className="text-[20px] font-semibold text-[var(--color-text)] mb-4">Action items</h3>
           <div className="bg-[var(--color-surface)] rounded-[var(--radius-2xl)] border border-[var(--color-outline-variant)] p-4 shadow-[0_4px_10px_rgba(0,0,0,0.05)]">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-[var(--color-outline-variant)]">
