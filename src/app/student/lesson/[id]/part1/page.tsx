@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { LucideCheckCircle, LucideXCircle, LucideArrowRight, LucideBookOpen, LucideHelpCircle, LucideArrowLeft } from 'lucide-react';
 import SafeMarkdown from '@/components/SafeMarkdown';
 import 'katex/dist/katex.min.css';
@@ -50,6 +51,8 @@ type LessonExercise = {
 
 export default function LessonPart1View({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
+  const searchParams = useSearchParams();
+  const part2RetakeSuffix = searchParams.get('retake') === '1' ? '?retake=1' : '';
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState<Record<string, boolean>>({});
   const [isLoaded, setIsLoaded] = useState(false);
@@ -70,7 +73,7 @@ export default function LessonPart1View({ params }: { params: Promise<{ id: stri
       const searchParams = new URLSearchParams(window.location.search);
       const classParam = searchParams.get('class') || currentClassId;
       if (classParam) {
-        setBackLink(`/student/roadmap?class=${classParam}`);
+        queueMicrotask(() => setBackLink(`/student/roadmap?class=${classParam}`));
       }
 
       queueMicrotask(() => {
@@ -335,7 +338,7 @@ export default function LessonPart1View({ params }: { params: Promise<{ id: stri
                 <h3 className="text-lg font-bold text-[var(--color-primary)] mb-2">Great work!</h3>
                 <p className="text-[var(--color-muted)] mb-6 text-sm">You have completed the foundational check. Continue to Part 2 to work with the AI Tutor in a deeper problem-solving flow.</p>
                 <Link
-                  href={`/student/lesson/${resolvedParams.id}/part2`}
+                  href={`/student/lesson/${resolvedParams.id}/part2${part2RetakeSuffix}`}
                   className="inline-flex items-center gap-2 px-8 py-3 bg-[var(--color-primary)] text-white font-semibold rounded-xl hover:opacity-90 transition-colors shadow-sm"
                 >
                   Continue to Part 2 <LucideArrowRight className="w-5 h-5" />

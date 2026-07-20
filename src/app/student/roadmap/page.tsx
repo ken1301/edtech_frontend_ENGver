@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'motion/react';
-import { CheckCircle, Play, Lightning, Star, ArrowRight, Warning } from '@phosphor-icons/react';
+import { CheckCircle, Play, Lightning, Star, ArrowRight, Warning, Lock } from '@phosphor-icons/react';
 import apiClient from '@/lib/apiClient';
 
 interface ClassData {
@@ -204,7 +204,9 @@ function LearningPathContent() {
 
         {lessons.map((lesson: LessonData, index: number) => {
           const isCompleted = lesson.status === 'completed';
+          const isLocked = lesson.status === 'locked';
           const hasExtras = (lesson.extra_exercises?.length ?? 0) > 0;
+          const lessonHref = `/student/lesson/${lesson.id}/part1?class=${targetClassId}${isCompleted ? '&retake=1' : ''}`;
 
           return (
             <div key={lesson.id || index} className="flex flex-col gap-6 w-full relative z-10">
@@ -215,15 +217,25 @@ function LearningPathContent() {
                 <div className="w-20 flex-shrink-0 flex justify-center pt-1">
                   {isCompleted ? (
                     <Link
-                      href={`/student/lesson/${lesson.id}/part1?class=${targetClassId}`}
+                      href={lessonHref}
                       className="group relative w-16 h-16 rounded-full bg-emerald-500 border-4 border-[var(--color-surface)] shadow-lg shadow-emerald-500/20 flex items-center justify-center text-white transition-all hover:scale-110 hover:shadow-emerald-500/40"
                     >
                       <CheckCircle weight="fill" size={28} className="transition-all duration-300 group-hover:scale-0 group-hover:opacity-0 absolute" />
                       <span className="text-lg font-bold transition-all duration-300 opacity-0 scale-50 group-hover:opacity-100 group-hover:scale-100 absolute">{index + 1}</span>
                     </Link>
+                  ) : isLocked ? (
+                    <div
+                      aria-disabled="true"
+                      className="relative w-16 h-16 md:w-20 md:h-20 rounded-full bg-[var(--color-surface)] border-2 border-[var(--color-outline-variant)] shadow-sm flex items-center justify-center opacity-55 cursor-not-allowed"
+                    >
+                      <span className="text-xl font-bold text-[var(--color-muted)]">{index + 1}</span>
+                      <span className="absolute -bottom-1 -right-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)]">
+                        <Lock weight="fill" size={14} className="text-[var(--color-muted)]" />
+                      </span>
+                    </div>
                   ) : (
                     <Link
-                      href={`/student/lesson/${lesson.id}/part1?class=${targetClassId}`}
+                      href={lessonHref}
                       className="group relative w-16 h-16 md:w-20 md:h-20 rounded-full bg-[var(--color-surface)] border-2 border-[var(--color-outline-variant)] hover:border-[var(--color-primary)] shadow-sm flex items-center justify-center transition-all duration-300 hover:scale-105 hover:shadow-md"
                     >
                       <span className="text-xl font-bold text-[var(--color-muted)] transition-all duration-300 group-hover:opacity-0 group-hover:scale-150 absolute">{index + 1}</span>
@@ -233,20 +245,27 @@ function LearningPathContent() {
                 </div>
 
                 <div className="flex flex-col items-start flex-1 min-w-0 pt-2">
-                  <Link
-                    href={`/student/lesson/${lesson.id}/part1?class=${targetClassId}`}
-                    className={`inline-block text-[18px] font-semibold px-5 py-3.5 rounded-2xl border shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
-                      isCompleted
-                        ? 'bg-[var(--color-surface)] text-[var(--color-on-surface-variant)] border-[var(--color-outline-variant)]'
-                        : 'bg-[var(--color-surface)] text-[var(--color-muted)] border-[var(--color-outline-variant)] hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)]'
-                    }`}
-                  >
-                    {lesson.title}
-                  </Link>
+                  {isLocked ? (
+                    <div className="inline-flex items-center gap-2 text-[18px] font-semibold px-5 py-3.5 rounded-2xl border border-[var(--color-outline-variant)] bg-[var(--color-surface)] text-[var(--color-muted)] opacity-55 cursor-not-allowed shadow-sm">
+                      <Lock weight="fill" size={16} />
+                      {lesson.title}
+                    </div>
+                  ) : (
+                    <Link
+                      href={lessonHref}
+                      className={`inline-block text-[18px] font-semibold px-5 py-3.5 rounded-2xl border shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md ${
+                        isCompleted
+                          ? 'bg-[var(--color-surface)] text-[var(--color-on-surface-variant)] border-[var(--color-outline-variant)]'
+                          : 'bg-[var(--color-surface)] text-[var(--color-muted)] border-[var(--color-outline-variant)] hover:border-[var(--color-primary)]/50 hover:text-[var(--color-primary)]'
+                      }`}
+                    >
+                      {lesson.title}
+                    </Link>
+                  )}
                 </div>
               </motion.div>
 
-              {hasExtras && targetClassId && (
+              {hasExtras && targetClassId && !isLocked && (
                 <motion.div variants={nodeVariants} className="relative z-10 flex flex-row items-start gap-6 w-full">
                   <div className="w-20 flex-shrink-0 flex justify-center pt-2 relative">
                     <div className="w-10 h-10 rounded-full bg-[var(--color-surface)] border-[3px] border-[var(--color-surface)] shadow-[0_0_0_2px_var(--color-primary)] flex items-center justify-center relative z-10 opacity-90">

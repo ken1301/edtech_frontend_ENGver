@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
   LucideSend,
   LucideCheckCircle2,
@@ -76,6 +77,8 @@ const TiptapEditor = ({ content, onChange }: { content: string; onChange: (v: st
 
 export default function LessonPart2View({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = React.use(params);
+  const searchParams = useSearchParams();
+  const isRetake = searchParams.get('retake') === '1';
 
   const [sessionClosed, setSessionClosed] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -205,20 +208,21 @@ export default function LessonPart2View({ params }: { params: Promise<{ id: stri
   }, [messages]);
 
   useEffect(() => {
-    if (initializedLessonIdRef.current === resolvedParams.id) {
+    const initializationKey = `${resolvedParams.id}:${isRetake ? 'retake' : 'normal'}`;
+    if (initializedLessonIdRef.current === initializationKey) {
       return;
     }
 
-    initializedLessonIdRef.current = resolvedParams.id;
+    initializedLessonIdRef.current = initializationKey;
 
     const fetchSession = async () => {
       setIsInitializing(true);
       setInitError(null);
       try {
-        let res = await aiClient.getActiveSession(resolvedParams.id);
+        let res = isRetake ? null : await aiClient.getActiveSession(resolvedParams.id);
 
         if (!res || res.status === 'not_found' || !res.session_id) {
-          res = await aiClient.startSession(resolvedParams.id);
+          res = await aiClient.startSession(resolvedParams.id, { reset: isRetake });
         }
 
         if (res.session_id) {
@@ -268,7 +272,7 @@ export default function LessonPart2View({ params }: { params: Promise<{ id: stri
       }
     };
     fetchSession();
-  }, [resolvedParams.id]);
+  }, [resolvedParams.id, isRetake]);
 
   const handleSendMessage = async (isSubmission = false, textOverride?: string) => {
     const currentMsg = textOverride || inputMsg;

@@ -48,8 +48,11 @@ export const aiClient = {
     return res.data;
   },
 
-  startSession: async (lessonId: string) => {
-    const res = await apiClient.post('/ai-session/start', { lessonId });
+  startSession: async (lessonId: string, options?: { reset?: boolean }) => {
+    const res = await apiClient.post('/ai-session/start', {
+      lessonId,
+      reset: options?.reset === true,
+    });
     return res.data;
   },
 
