@@ -29,12 +29,18 @@ type AssignmentSummary = {
   assignment_id: string;
   title: string;
   due_date?: string;
+  status?: string;
 };
 
 function getAssignmentTime(assignment: AssignmentSummary) {
   if (!assignment.due_date) return Number.MAX_SAFE_INTEGER;
   const time = new Date(assignment.due_date).getTime();
   return Number.isFinite(time) ? time : Number.MAX_SAFE_INTEGER;
+}
+
+function isPendingAssignment(assignment: AssignmentSummary) {
+  const status = assignment.status?.toUpperCase();
+  return !status || !['DONE', 'GRADED', 'SUBMITTED', 'EVALUATED', 'COMPLETED', 'PASSED'].includes(status);
 }
 
 function calculateOverallLearningProgress(classes: StudentClassSummary[]) {
@@ -171,7 +177,9 @@ export default function StudentDashboard() {
 
   const assignmentsRaw = Array.isArray(assignmentsData) ? assignmentsData : [];
   const assignments = React.useMemo(
-    () => [...assignmentsRaw].sort((a, b) => getAssignmentTime(a) - getAssignmentTime(b)),
+    () => assignmentsRaw
+      .filter(isPendingAssignment)
+      .sort((a, b) => getAssignmentTime(a) - getAssignmentTime(b)),
     [assignmentsRaw],
   );
   const classes = Array.isArray(classesData) ? classesData : [];
