@@ -8,7 +8,6 @@ import {
   LucideBook,
   LucideChevronRight,
   LucideClock,
-  LucideTrophy,
   LucideArrowLeft,
   LucideSearch,
   LucideFilter
@@ -21,7 +20,7 @@ export default function StudentClassesPage() {
   const { data: classesData, isLoading } = useQuery({
     queryKey: ['student', 'classes'],
     queryFn: async () => {
-      const res = await apiClient.get('/student/classes');
+      const res = await apiClient.get('/student/me/classes');
       return res.data;
     }
   });
@@ -123,10 +122,10 @@ export default function StudentClassesPage() {
                     </p>
                     <div className="flex items-center gap-4 text-sm font-medium text-[var(--color-muted)]">
                       <div className="flex items-center gap-1.5 bg-[var(--color-surface-container-high)] px-3 py-1.5 rounded-lg">
-                        <LucideClock className="w-4 h-4 text-[var(--color-muted)]" /> {cls.lesson_count || 12} lessons
+                        <LucideClock className="w-4 h-4 text-[var(--color-muted)]" /> {Number(cls.total_lessons || 0)} lessons
                       </div>
                       <div className="flex items-center gap-1.5 bg-[var(--color-surface-container-high)] px-3 py-1.5 rounded-lg">
-                        <LucideTrophy className="w-4 h-4 text-yellow-500" /> {cls.rank ? `Rank ${cls.rank}` : 'Rank 3'}
+                        {Number(cls.completed_lessons || 0)}/{Number(cls.total_lessons || 0)} completed
                       </div>
                     </div>
                   </div>
